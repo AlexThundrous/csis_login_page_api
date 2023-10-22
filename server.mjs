@@ -28,6 +28,20 @@ const postgres = knex({
 // Middleware to parse JSON request bodies
 app.use(express.json());
 
+
+app.get('/users', (req, res) => {
+    postgres
+        .select('*')
+        .from('users')
+        .then(users => {
+            res.status(200).json(users);
+        })
+        .catch(error => {
+            console.error(error);
+            res.status(500).json({ message: 'Internal Server Error' });
+        });
+});
+
 // Route for user registration
 // Route for user registration
 app.post('/register', (req, res) => {
