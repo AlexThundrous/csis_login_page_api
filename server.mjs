@@ -103,6 +103,62 @@ app.post('/signin', (req, res) => {
         });
 });
 
+app.put('/update/:id', (req, res) => {
+    const id = req.params.id; // Get the user ID from the URL parameter
+    const { username, password, first_name, last_name, address, phone_number } = req.body;
+
+    // Start a transaction to ensure data consistency
+    postgres.transaction(trx => {
+        const updateUser = {
+            id,
+            first_name,
+            last_name,
+            address,
+            phone_number,
+        };
+
+        // Update the user table
+        postgres('users')
+            .where({ id })
+            .update(updateUser)
+            .returning('*')
+            .transacting(trx)
+            .then(userData => {
+                // If the username or password are provided, update the admin table as well
+                if (username || password) {
+                    const updateAdmin = {};
+                    if (username) {
+                        updateAdmin.username = username;
+                    }
+                    if (password) {
+                        updateAdmin.password = password;
+                    }
+
+                    // Update the admin table
+                    postgres('admins')
+                        .where({ id })
+                        .update(updateAdmin)
+                        .transacting(trx)
+                        .then(() => userData)
+                        .catch(trx.rollback);
+                    return userData;    
+                } else {
+                    return userData;
+                }
+            })
+            .then(trx.commit)
+            .catch(trx.rollback);
+    })
+    .then(userData => {
+        return res.status(200).json({ message: 'User updated successfully', user: userData[0] });
+    })
+    .catch(error => {
+        console.error(error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    });
+});
+
+
  // Use this after the variable declaration
 // Start server
 app.listen(3002, () => {
