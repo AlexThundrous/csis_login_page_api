@@ -11,6 +11,8 @@ const corsOptions ={
    optionSuccessStatus:200,
 }
 
+app.use(cors(corsOptions))
+
 const postgres = knex({
     client: 'pg',
     connection: {
@@ -82,7 +84,17 @@ app.post('/signin', (req, res) => {
             if (!user) {
                 return res.status(401).json({ message: 'Invalid username or password' });
             } else {
-                return res.status(200).json({ message: 'User signed in successfully', user });
+                return postgres('users')
+                      .where({id: user.id})
+                      .first()
+                      .then(
+                        (userData => {
+                            if (!userData) {
+                                return res.status(404).json({ message: 'User data not found' });
+                            }
+                            return res.status(200).json(userData);
+                        }
+                        ))
             }
         })
         .catch(error => {
@@ -91,7 +103,7 @@ app.post('/signin', (req, res) => {
         });
 });
 
-app.use(cors(corsOptions)) // Use this after the variable declaration
+ // Use this after the variable declaration
 // Start server
 app.listen(3002, () => {
     console.log('Server started on port 3002');
